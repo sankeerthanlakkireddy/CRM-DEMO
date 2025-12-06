@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Booking Data Manager (AppScript Demo)</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { margin-bottom: 40px; border: 1px solid #ccc; padding: 15px; border-radius: 5px; max-width: 600px; margin: 20px auto; }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input[type="text"], input[type="email"], input[type="date"], button { padding: 8px; margin-top: 5px; width: 100%; box-sizing: border-box; }
+        button { background-color: #007BFF; color: white; border: none; cursor: pointer; margin-top: 15px; }
+        #resultsTable { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        #resultsTable th, #resultsTable td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <script>
+        const APPS_SCRIPT_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL"; 
+    </script>
+
+    <div class="container">
+        <h2>Submit New Booking 📥</h2>
+        <div id="submissionMessage"></div>
+        <form id="submissionForm">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required>
+
+            <label for="phone">Phone:</label>
+            <input type="text" id="phone" name="phone" required>
+
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+
+            <label for="bookedDate">Date of Booked:</label>
+            <input type="date" id="bookedDate" name="bookedDate" required>
+
+            <button type="submit">Submit Data</button>
+        </form>
+    </div>
+
+    <div class="container">
+        <h2>Retrieve Data by Date 📅</h2>
+        <div id="retrievalMessage"></div>
+        <form id="retrievalForm">
+            <label for="searchDate">Select Date:</label>
+            <input type="date" id="searchDate" name="searchDate" required>
+            
+            <button type="submit">Retrieve Data</button>
+        </form>
+        
+        <h3>Search Results:</h3>
+        <table id="resultsTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Date Booked</th>
+                </tr>
+            </thead>
+            <tbody id="resultsBody">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        const submissionForm = document.getElementById('submissionForm');
+        const retrievalForm = document.getElementById('retrievalForm');
+        const resultsBody = document.getElementById('resultsBody');
+        const subMsg = document.getElementById('submissionMessage');
+        const retMsg = document.getElementById('retrievalMessage');
+
+        // --- SUBMISSION LOGIC (POST Request) ---
+        submissionForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            subMsg.className = '';
+            subMsg.textContent = 'Submitting...';
+
+            // Create URLSearchParams object from the form data
+            const formData = new URLSearchParams(new FormData(submissionForm));
+
+            try {
+                // Send the POST request to the Apps Script endpoint
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    subMsg.className = 'success';
+                    subMsg.textContent = result.message + " Check your Google Sheet!";
+                    submissionForm.reset(); // Clear the form on success
+                } else {
+                    subMsg.className = 'error';
+                    subMsg.textContent = 'Submission Failed: ' + result.message;
+                }
+            } catch (error) {
+                subMsg.className = 'error';
+                subMsg.textContent = 'An error occurred during submission: ' + error;
+            }
+        });
+
+
+        // --- RETRIEVAL LOGIC (GET Request) ---
+        retrievalForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            resultsBody.innerHTML = ''; // Clear previous results
+            retMsg.className = '';
+            retMsg.textContent = 'Searching...';
+
+            const searchDate = document.getElementById('searchDate').value;
+            // Build the URL with the searchDate parameter for the doGet function
+            const fullUrl = APPS_SCRIPT_URL + '?searchDate=' + searchDate;
+
+            try {
+                // Send the GET request to the Apps Script endpoint
+                const response = await fetch(fullUrl, {
+                    method: 'GET'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    retMsg.className = 'success';
+                    retMsg.textContent = `Found ${result.data.length} booking(s) for ${searchDate}.`;
+                    
+                    if (result.data.length > 0) {
+                        // Populate the table with retrieved data
+                        result.data.forEach(booking => {
+                            const row = resultsBody.insertRow();
+                            row.insertCell().textContent = booking['Name'];
+                            row.insertCell().textContent = booking['Phone'];
+                            row.insertCell().textContent = booking['Email'];
+                            row.insertCell().textContent = booking['Date Booked'];
+                        });
+                    }
+                } else {
+                    retMsg.className = 'error';
+                    retMsg.textContent = 'Retrieval Failed: ' + result.message;
+                }
+            } catch (error) {
+                retMsg.className = 'error';
+                retMsg.textContent = 'An error occurred during retrieval: ' + error;
+            }
+        });
+    </script>
+</body>
+</html>
